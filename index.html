@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta charset="utf-8" />
+  <title>Picapool: Join the list</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    html, body { margin: 0; padding: 0; }
+    * { box-sizing: border-box; }
+    body { background: #E7E3DA; font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; }
+    input::placeholder { color: #9A958D; opacity: 1; }
+    button, input, select, textarea { font-family: inherit; }
+    @keyframes ppReveal { from { opacity: 0; transform: translateY(16px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes ppSlideInRight { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes ppSlideInLeft { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes ppPulse { 0% { transform: scale(0.7); opacity: 0.9; } 100% { transform: scale(1.15); opacity: 0; } }
+    @keyframes ppBubbleIn { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
+    @keyframes ppFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    @keyframes ppBlurPulse { 0%, 100% { opacity: 0.55; filter: blur(6px); } 50% { opacity: 0.85; filter: blur(5px); } }
+  </style>
+  <script>
+    // === Picapool tracking ===
+    // 1. Deploy google-apps-script.gs as a Web App and paste the URL below.
+    // 2. The sheet will capture: timestamp, IP, page, event, target, detail, user agent, referrer.
+    window.GAS_WEB_APP_URL = 'PASTE_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE';
+
+    (function() {
+      let userIP = '';
+      try {
+        fetch('https://api.ipify.org?format=json')
+          .then(r => r.json())
+          .then(d => { userIP = d.ip || ''; })
+          .catch(() => {});
+      } catch (e) {}
+
+      function send(event, target, detail) {
+        const url = window.GAS_WEB_APP_URL;
+        if (!url || url.indexOf('PASTE_') === 0) return;
+        const payload = {
+          ip: userIP,
+          page: window.location.href,
+          event: event,
+          target: target,
+          detail: detail,
+          ua: navigator.userAgent,
+          ref: document.referrer
+        };
+        navigator.sendBeacon
+          ? navigator.sendBeacon(url, JSON.stringify(payload))
+          : fetch(url, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' }, mode: 'no-cors' }).catch(() => {});
+      }
+
+      window.track = send;
+
+      document.addEventListener('click', function(e) {
+        const el = e.target.closest('button, [onClick], input, textarea, select') || e.target;
+        const text = (el.innerText || el.value || el.textContent || '').slice(0, 80);
+        const label = el.getAttribute('data-track') || text || el.tagName;
+        send('tap', el.tagName + (el.className ? '.' + el.className.split(' ')[0] : ''), label);
+      }, true);
+
+      window.addEventListener('load', function() {
+        send('pageview', 'load', window.location.pathname);
+      });
+    })();
+  </script>
+</helmet>
+
+<div style="height: 100vh; width: 100%; background: #E7E3DA; display: flex; justify-content: center; align-items: center; overflow: hidden;">
+  <div style="width: 390px; max-width: 100%; height: 100%; max-height: 844px; background: #F5F3EE; box-shadow: 0 24px 80px rgba(0,0,0,0.28); position: relative; display: flex; flex-direction: column; overflow: hidden;">
+
+    <!-- Top Progress Bar -->
+    <sc-if value="{{ showProgressBar }}" hint-placeholder-val="{{ false }}">
+      <div style="position: absolute; top: 0; left: 0; right: 0; z-index: 50; padding: 14px 20px 0; display: flex; align-items: center; gap: 12px; background: linear-gradient(to bottom, rgba(245,243,238,0.98) 60%, rgba(245,243,238,0)); pointer-events: none;">
+        <sc-if value="{{ showBackButton }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ prevPage }}" style="pointer-events: auto; width: 34px; height: 34px; border-radius: 10px; border: 1px solid #DDD8D0; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 150ms ease, background 150ms ease;" style-hover="background: #F0EEEA; transform: scale(1.04);" style-active="transform: scale(0.96);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 4L7 12L15 20" stroke="#1A1A1A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </button>
+        </sc-if>
+        <div style="flex: 1; height: 5px; background: #E0DCD4; border-radius: 3px; overflow: hidden;">
+          <div style="height: 100%; width: {{ progressPercent }}%; background: #0D6B63; border-radius: 3px; transition: width 400ms cubic-bezier(0.22, 1, 0.36, 1);"></div>
+        </div>
+        <span style="font-size: 12px; font-weight: 700; color: #6E6860; min-width: 36px; text-align: right;">{{ pageLabel }}</span>
+      </div>
+    </sc-if>
+
+    <!-- Page Stage -->
+    <div ref="{{ stageRef }}" style="flex: 1; min-height: 0; position: relative;">
+
+      <!-- PAGE 1 - The Hook -->
+      <div ref="{{ s1Ref }}" data-screen-label="01 — Discover" style="position: absolute; inset: 0; display: flex; flex-direction: column; opacity: {{ page0opacity }}; pointer-events: {{ page0pointer }}; z-index: {{ page0zindex }}; transition: opacity 350ms ease; overflow: hidden; background: #0F0F0F;">
+        <div style="position: absolute; inset: 0; display: flex; flex-direction: column;">
+          <div style="width: 100%; flex: 1; min-height: 0; position: relative; background: #161616;">
+
+            <!-- DEMO STEP INTRO: LOGIN / RADAR -->
+            <sc-if value="{{ demoStepIntro }}" hint-placeholder-val="{{ true }}">
+              <div onClick="{{ skipIntro }}" style="height: 100%; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0A0A0A; position: relative; cursor: pointer; overflow: hidden;">
+
+                <sc-if value="{{ introRadarActive }}" hint-placeholder-val="{{ true }}">
+                  <div style="position: absolute; top: 72px; left: 0; right: 0; text-align: center; font-size: 14px; color: #D8D4CC;">{{ introStatusText }}</div>
+                  <div style="position: relative; width: 260px; height: 260px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <div style="position: absolute; width: 260px; height: 260px; border-radius: 130px; border: 1px solid rgba(210,79,53,0.35); animation: ppPulse 2.4s ease-out infinite;"></div>
+                    <div style="position: absolute; width: 190px; height: 190px; border-radius: 95px; border: 1px solid rgba(210,79,53,0.45); animation: ppPulse 2.4s ease-out infinite; animation-delay: 0.6s;"></div>
+                    <div style="position: absolute; width: 120px; height: 120px; border-radius: 60px; border: 1px solid rgba(210,79,53,0.55); animation: ppPulse 2.4s ease-out infinite; animation-delay: 1.2s;"></div>
+
+                    <div style="width: 56px; height: 56px; border-radius: 28px; background: #D24F35; display: flex; align-items: center; justify-content: center; z-index: 2; box-shadow: 0 0 24px rgba(210,79,53,0.5);">
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="#fff" stroke-width="1.6"></circle><path d="M4 20C4 16 7.5 14 12 14C16.5 14 20 16 20 20" stroke="#fff" stroke-width="1.6" stroke-linecap="round"></path></svg>
+                    </div>
+
+                    <sc-if value="{{ introShowBubbles }}" hint-placeholder-val="{{ false }}">
+                      <div style="position: absolute; top: 12px; left: 118px; width: 34px; height: 34px; border-radius: 17px; background: #E0574A; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; animation: ppBubbleIn 350ms ease-out both;">RV</div>
+                      <div style="position: absolute; top: 32px; right: 16px; width: 34px; height: 34px; border-radius: 17px; background: #6C5CE7; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; animation: ppBubbleIn 350ms ease-out both; animation-delay: 80ms;">NB</div>
+                      <div style="position: absolute; top: 112px; left: 2px; width: 34px; height: 34px; border-radius: 17px; background: #E0A72B; color: #1A1A1A; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; animation: ppBubbleIn 350ms ease-out both; animation-delay: 160ms;">SL</div>
+                      <div style="position: absolute; top: 100px; right: 2px; width: 34px; height: 34px; border-radius: 17px; background: #2FBF9F; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; animation: ppBubbleIn 350ms ease-out both; animation-delay: 240ms;">DT</div>
+                      <div style="position: absolute; bottom: 34px; left: 22px; width: 34px; height: 34px; border-radius: 17px; background: #3FAE5C; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; animation: ppBubbleIn 350ms ease-out both; animation-delay: 320ms;">MJ</div>
+                      <div style="position: absolute; bottom: 18px; right: 36px; width: 34px; height: 34px; border-radius: 17px; background: #4A6FE0; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; animation: ppBubbleIn 350ms ease-out both; animation-delay: 400ms;">AK</div>
+                    </sc-if>
+                  </div>
+
+                  <sc-if value="{{ introShowTooltips }}" hint-placeholder-val="{{ false }}">
+                    <div style="position: absolute; top: 100px; left: 20px; display: flex; align-items: center; gap: 6px; background: #1E1E1E; border-radius: 8px; padding: 6px 10px; animation: ppBubbleIn 300ms ease-out both;">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#D24F35" stroke-width="1.5"></rect></svg>
+                      <span style="font-size: 10.5px; color: #E5E1D8;">course or college</span>
+                    </div>
+                    <div style="position: absolute; top: 156px; right: 12px; display: flex; align-items: center; gap: 6px; background: #1E1E1E; border-radius: 8px; padding: 6px 10px; animation: ppBubbleIn 300ms ease-out both; animation-delay: 120ms;">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#D24F35" stroke-width="1.5"></rect></svg>
+                      <span style="font-size: 10.5px; color: #E5E1D8;">looking someone</span>
+                    </div>
+                    <div style="position: absolute; bottom: 108px; left: 8px; display: flex; align-items: center; gap: 6px; background: #1E1E1E; border-radius: 8px; padding: 6px 10px; animation: ppBubbleIn 300ms ease-out both; animation-delay: 240ms;">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#D24F35" stroke-width="1.5"></rect></svg>
+                      <span style="font-size: 10.5px; color: #E5E1D8;">pg and flats</span>
+                    </div>
+                  </sc-if>
+                </sc-if>
+
+                <sc-if value="{{ introCountActive }}" hint-placeholder-val="{{ false }}">
+                  <div style="text-align: center;">
+                    <div style="font-size: 56px; font-weight: 800; color: #D24F35; line-height: 1;">4934</div>
+                    <div style="font-size: 15px; color: #E5E1D8; margin-top: 10px;">people nearby</div>
+                    <div style="font-size: 12.5px; color: #8A6E63; margin-top: 4px;">&amp; 293 ongoing posts</div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <!-- DEMO STEP 0: FEED -->
+            <sc-if value="{{ demoStep0 }}" hint-placeholder-val="{{ true }}">
+              <div style="height: 100%; display: flex; flex-direction: column; background: #161616;">
+                <div style="flex: 1; min-height: 0; overflow-y: {{ feedOverflow }}; overflow-x: hidden; padding: 20px 18px 0;">
+                  <div style="font-size: 24px; font-weight: 700; color: #F0EEEA; margin-bottom: 14px;">Pools</div>
+                  <div style="display: flex; align-items: center; gap: 9px; background: #262626; border-radius: 20px; padding: 11px 15px; margin-bottom: 14px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="#8A8A8A" stroke-width="1.5"></circle><path d="M20 20L16 16" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                    <span style="font-size: 13.5px; color: #8A8A8A;">Search pools nearby</span>
+                  </div>
+                  <div style="display: flex; gap: 8px; margin-bottom: 18px;">
+                    <div style="background: #D24F35; color: #fff; font-size: 12.5px; font-weight: 600; padding: 8px 16px; border-radius: 15px;">All</div>
+                    <div style="background: #3A3A3A; color: #CFCFCF; font-size: 12.5px; font-weight: 500; padding: 8px 16px; border-radius: 15px;">Ask</div>
+                    <div style="background: #3A3A3A; color: #CFCFCF; font-size: 12.5px; font-weight: 500; padding: 8px 16px; border-radius: 15px;">Flat</div>
+                  </div>
+                  <div onClick="{{ openPostB }}" style="cursor: pointer; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid #232323;">
+                    <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 9px;">
+                      <div style="width: 28px; height: 28px; border-radius: 14px; background: {{ posts[1].avatarBg }}; flex-shrink: 0;"></div>
+                      <div style="background: {{ posts[1].tagBg }}; color: {{ posts[1].tagColor }}; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 10px;">{{ posts[1].tag }}</div>
+                      <span style="font-size: 11px; color: #7A756D;">{{ posts[1].time }}</span>
+                      <span style="font-size: 11px; color: #7A756D; margin-left: auto;">{{ posts[1].distance }}</span>
+                    </div>
+                    <p style="margin: 0 0 8px; font-size: 15px; font-weight: 600; line-height: 1.4; color: #F0EEEA;">{{ posts[1].title }}</p>
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                      <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8A8A8A;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 20.5C12 20.5 3 15 3 8.8C3 5.6 5.4 3.5 8.2 3.5C10 3.5 11.3 4.4 12 5.6C12.7 4.4 14 3.5 15.8 3.5C18.6 3.5 21 5.6 21 8.8C21 15 12 20.5 12 20.5Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linejoin="round"></path></svg>{{ posts[1].likes }}</span>
+                      <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8A8A8A;"><svg width="14" height="14" viewBox="0 0 32 32" fill="none"><path d="M2 16C6 8 12 5 16 5C20 5 26 8 30 16C26 23.5 20 27 16 27C12 27 6 23.5 2 16Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="16" cy="16" r="4.5" stroke="#8A8A8A" stroke-width="1.5"></circle></svg>{{ posts[1].views }}</span>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 11L20.5 3L14.5 20.5L11 12.5L3 11Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M11 12.5L20.5 3" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                    </div>
+                  </div>
+                  <div onClick="{{ openPostB }}" style="cursor: pointer; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid #232323;">
+                    <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 9px;">
+                      <div style="width: 28px; height: 28px; border-radius: 14px; background: {{ posts[1].avatarBg }}; flex-shrink: 0;"></div>
+                      <div style="background: {{ posts[1].tagBg }}; color: {{ posts[1].tagColor }}; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 10px;">{{ posts[1].tag }}</div>
+                      <span style="font-size: 11px; color: #7A756D;">{{ posts[1].time }}</span>
+                      <span style="font-size: 11px; color: #7A756D; margin-left: auto;">{{ posts[1].distance }}</span>
+                    </div>
+                    <p style="margin: 0 0 8px; font-size: 15px; font-weight: 600; line-height: 1.4; color: #F0EEEA;">{{ posts[1].title }}</p>
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                      <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8A8A8A;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 20.5C12 20.5 3 15 3 8.8C3 5.6 5.4 3.5 8.2 3.5C10 3.5 11.3 4.4 12 5.6C12.7 4.4 14 3.5 15.8 3.5C18.6 3.5 21 5.6 21 8.8C21 15 12 20.5 12 20.5Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linejoin="round"></path></svg>{{ posts[1].likes }}</span>
+                      <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8A8A8A;"><svg width="14" height="14" viewBox="0 0 32 32" fill="none"><path d="M2 16C6 8 12 5 16 5C20 5 26 8 30 16C26 23.5 20 27 16 27C12 27 6 23.5 2 16Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="16" cy="16" r="4.5" stroke="#8A8A8A" stroke-width="1.5"></circle></svg>{{ posts[1].views }}</span>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 11L20.5 3L14.5 20.5L11 12.5L3 11Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M11 12.5L20.5 3" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                    </div>
+                  </div>
+                  <div onClick="{{ openPostA }}" style="cursor: pointer; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid #232323;">
+                    <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 9px;">
+                      <div style="width: 28px; height: 28px; border-radius: 14px; background: {{ posts[0].avatarBg }}; flex-shrink: 0;"></div>
+                      <div style="background: {{ posts[0].tagBg }}; color: {{ posts[0].tagColor }}; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 10px;">{{ posts[0].tag }}</div>
+                      <span style="font-size: 11px; color: #7A756D;">{{ posts[0].time }}</span>
+                      <span style="font-size: 11px; color: #7A756D; margin-left: auto;">{{ posts[0].distance }}</span>
+                    </div>
+                    <p style="margin: 0 0 8px; font-size: 15px; font-weight: 600; line-height: 1.4; color: #F0EEEA;">{{ posts[0].title }}</p>
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                      <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8A8A8A;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 20.5C12 20.5 3 15 3 8.8C3 5.6 5.4 3.5 8.2 3.5C10 3.5 11.3 4.4 12 5.6C12.7 4.4 14 3.5 15.8 3.5C18.6 3.5 21 5.6 21 8.8C21 15 12 20.5 12 20.5Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linejoin="round"></path></svg>{{ posts[0].likes }}</span>
+                      <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8A8A8A;"><svg width="14" height="14" viewBox="0 0 32 32" fill="none"><path d="M2 16C6 8 12 5 16 5C20 5 26 8 30 16C26 23.5 20 27 16 27C12 27 6 23.5 2 16Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="16" cy="16" r="4.5" stroke="#8A8A8A" stroke-width="1.5"></circle></svg>{{ posts[0].views }}</span>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 11L20.5 3L14.5 20.5L11 12.5L3 11Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M11 12.5L20.5 3" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                    </div>
+                  </div>
+
+                  <sc-if value="{{ showMorePosts }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding-top: 18px; margin-top: -4px; border-top: 1px solid #232323;">
+                      <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 9px;">
+                        <div style="width: 28px; height: 28px; border-radius: 14px; background: #B18AE0; flex-shrink: 0;"></div>
+                        <div style="background: #2B6FE0; color: #fff; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 10px;">Asking Nearby</div>
+                        <span style="font-size: 11px; color: #7A756D;">2d ago</span>
+                        <span style="font-size: 11px; color: #7A756D; margin-left: auto;">~2.0 km</span>
+                      </div>
+                      <p style="margin: 0 0 8px; font-size: 15px; font-weight: 600; line-height: 1.4; color: #F0EEEA;">Help with a survey about this app</p>
+                      <div style="display: flex; align-items: center; gap: 16px; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid #232323;">
+                        <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8A8A8A;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 20.5C12 20.5 3 15 3 8.8C3 5.6 5.4 3.5 8.2 3.5C10 3.5 11.3 4.4 12 5.6C12.7 4.4 14 3.5 15.8 3.5C18.6 3.5 21 5.6 21 8.8C21 15 12 20.5 12 20.5Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linejoin="round"></path></svg>28</span>
+                        <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8A8A8A;"><svg width="14" height="14" viewBox="0 0 32 32" fill="none"><path d="M2 16C6 8 12 5 16 5C20 5 26 8 30 16C26 23.5 20 27 16 27C12 27 6 23.5 2 16Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="16" cy="16" r="4.5" stroke="#8A8A8A" stroke-width="1.5"></circle></svg>1308</span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 11L20.5 3L14.5 20.5L11 12.5L3 11Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M11 12.5L20.5 3" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                      </div>
+
+                      <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 9px;">
+                        <div style="width: 28px; height: 28px; border-radius: 14px; background: #9B7EDE; flex-shrink: 0;"></div>
+                        <div style="background: #2B6FE0; color: #fff; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 10px;">Asking Nearby</div>
+                        <span style="font-size: 11px; color: #7A756D;">4d ago</span>
+                        <span style="font-size: 11px; color: #7A756D; margin-left: auto;">~1.5 km</span>
+                      </div>
+                      <p style="margin: 0 0 8px; font-size: 15px; font-weight: 600; line-height: 1.4; color: #F0EEEA;">Need a female flatmate, single room</p>
+                      <div style="display: flex; align-items: center; gap: 16px; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid #232323;">
+                        <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8A8A8A;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 20.5C12 20.5 3 15 3 8.8C3 5.6 5.4 3.5 8.2 3.5C10 3.5 11.3 4.4 12 5.6C12.7 4.4 14 3.5 15.8 3.5C18.6 3.5 21 5.6 21 8.8C21 15 12 20.5 12 20.5Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linejoin="round"></path></svg>54</span>
+                        <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8A8A8A;"><svg width="14" height="14" viewBox="0 0 32 32" fill="none"><path d="M2 16C6 8 12 5 16 5C20 5 26 8 30 16C26 23.5 20 27 16 27C12 27 6 23.5 2 16Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="16" cy="16" r="4.5" stroke="#8A8A8A" stroke-width="1.5"></circle></svg>2592</span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 11L20.5 3L14.5 20.5L11 12.5L3 11Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M11 12.5L20.5 3" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                      </div>
+
+                      <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 9px;">
+                        <div style="width: 28px; height: 28px; border-radius: 14px; background: #6FA8DC; flex-shrink: 0;"></div>
+                        <div style="background: #2B6FE0; color: #fff; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 10px;">Asking Nearby</div>
+                        <span style="font-size: 11px; color: #7A756D;">3d ago</span>
+                        <span style="font-size: 11px; color: #7A756D; margin-left: auto;">~1.8 km</span>
+                      </div>
+                      <p style="margin: 0 0 8px; font-size: 15px; font-weight: 600; line-height: 1.4; color: #F0EEEA;">ORDER PLACEMENT: jmc, gargi, ipcw and drc</p>
+                      <div style="display: flex; align-items: center; gap: 16px; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid #232323;">
+                        <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8A8A8A;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 20.5C12 20.5 3 15 3 8.8C3 5.6 5.4 3.5 8.2 3.5C10 3.5 11.3 4.4 12 5.6C12.7 4.4 14 3.5 15.8 3.5C18.6 3.5 21 5.6 21 8.8C21 15 12 20.5 12 20.5Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linejoin="round"></path></svg>33</span>
+                        <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8A8A8A;"><svg width="14" height="14" viewBox="0 0 32 32" fill="none"><path d="M2 16C6 8 12 5 16 5C20 5 26 8 30 16C26 23.5 20 27 16 27C12 27 6 23.5 2 16Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="16" cy="16" r="4.5" stroke="#8A8A8A" stroke-width="1.5"></circle></svg>1497</span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 11L20.5 3L14.5 20.5L11 12.5L3 11Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M11 12.5L20.5 3" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                      </div>
+
+                      <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 9px;">
+                        <div style="width: 28px; height: 28px; border-radius: 14px; background: #8FA66E; flex-shrink: 0;"></div>
+                        <div style="background: #2B6FE0; color: #fff; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 10px;">Asking Nearby</div>
+                        <span style="font-size: 11px; color: #7A756D;">Yesterday</span>
+                        <span style="font-size: 11px; color: #7A756D; margin-left: auto;">~2.1 km</span>
+                      </div>
+                      <p style="margin: 0 0 8px; font-size: 15px; font-weight: 600; line-height: 1.4; color: #F0EEEA;">ECO HONOURS: theory or maths aligned?</p>
+                      <div style="display: flex; align-items: center; gap: 16px;">
+                        <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8A8A8A;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 20.5C12 20.5 3 15 3 8.8C3 5.6 5.4 3.5 8.2 3.5C10 3.5 11.3 4.4 12 5.6C12.7 4.4 14 3.5 15.8 3.5C18.6 3.5 21 5.6 21 8.8C21 15 12 20.5 12 20.5Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linejoin="round"></path></svg>19</span>
+                        <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8A8A8A;"><svg width="14" height="14" viewBox="0 0 32 32" fill="none"><path d="M2 16C6 8 12 5 16 5C20 5 26 8 30 16C26 23.5 20 27 16 27C12 27 6 23.5 2 16Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="16" cy="16" r="4.5" stroke="#8A8A8A" stroke-width="1.5"></circle></svg>1104</span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 11L20.5 3L14.5 20.5L11 12.5L3 11Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M11 12.5L20.5 3" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ showSeeMoreButton }}" hint-placeholder-val="{{ true }}">
+                    <div onClick="{{ revealMorePosts }}" style="cursor: pointer; text-align: center; padding: 16px 0 20px; font-size: 13px; font-weight: 600; color: #D24F35;">See more</div>
+                  </sc-if>
+                </div>
+                <div style="height: 62px; background: #111111; border-top: 1px solid #232323; display: flex; align-items: center; justify-content: space-around; flex-shrink: 0;">
+                  <div style="display: flex; flex-direction: column; align-items: center; gap: 3px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 11L12 4L20 11V20H4V11Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+                    <span style="font-size: 9.5px; color: #8A8A8A;">Home</span>
+                  </div>
+                  <div style="display: flex; flex-direction: column; align-items: center; gap: 3px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="2" stroke="#D24F35" stroke-width="1.5"></rect><path d="M3 11H21" stroke="#D24F35" stroke-width="1.2"></path></svg>
+                    <span style="font-size: 9.5px; color: #D24F35;">Pools</span>
+                  </div>
+                  <div style="width: 30px; height: 30px; border-radius: 15px; background: #D24F35; display: flex; align-items: center; justify-content: center;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 4V20M4 12H20" stroke="#fff" stroke-width="1.8" stroke-linecap="round"></path></svg>
+                  </div>
+                  <div style="display: flex; flex-direction: column; align-items: center; gap: 3px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 5H20V16H9L4 20V5Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+                    <span style="font-size: 9.5px; color: #8A8A8A;">Chat</span>
+                  </div>
+                  <div style="display: flex; flex-direction: column; align-items: center; gap: 3px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 8H19L18 20H6L5 8Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linejoin="round"></path><path d="M8 8V6C8 4 9.5 2.5 12 2.5C14.5 2.5 16 4 16 6V8" stroke="#8A8A8A" stroke-width="1.5"></path></svg>
+                    <span style="font-size: 9.5px; color: #8A8A8A;">Shop</span>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <!-- DEMO STEP 1: POST DETAILS -->
+            <sc-if value="{{ demoStep1 }}" hint-placeholder-val="{{ false }}">
+              <div style="height: 100%; display: flex; flex-direction: column; background: #161616;">
+                <div style="display: flex; align-items: center; padding: 16px; flex-shrink: 0; gap: 10px;">
+                  <span onClick="{{ demoBack }}" style="cursor: pointer; display: flex;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M15 4L7 12L15 20" stroke="#F0EEEA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                  <span style="flex: 1; text-align: center; font-size: 15px; font-weight: 600; color: #F0EEEA;">Post Details</span>
+                </div>
+                <div style="flex: 1; min-height: 0; overflow: hidden; padding: 0 16px;">
+                  <div style="background: #262626; border-radius: 14px; padding: 16px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 8px;">
+                      <div style="width: 22px; height: 22px; border-radius: 11px; background: {{ currentPost.avatarBg }}; color: #fff; font-size: 10.5px; font-weight: 700; display: flex; align-items: center; justify-content: center;">{{ currentPost.avatarText }}</div>
+                      <span style="font-size: 12px; color: #B9B4AC;">{{ currentPost.author }}</span>
+                    </div>
+                    <p style="margin: 0 0 8px; font-size: 15px; font-weight: 700; color: #F0EEEA;">{{ currentPost.title }}</p>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                      <span style="background: {{ currentPost.tagBg }}; color: {{ currentPost.tagColor }}; font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 9px;">{{ currentPost.tag }}</span>
+                      <span style="font-size: 10px; color: #7A756D;">{{ currentPost.time }}</span>
+                    </div>
+                    <p style="margin: 0 0 10px; font-size: 11.5px; line-height: 1.5; color: #B9B4AC;">{{ currentPost.body }}</p>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 20.5C12 20.5 3 15 3 8.8C3 5.6 5.4 3.5 8.2 3.5C10 3.5 11.3 4.4 12 5.6C12.7 4.4 14 3.5 15.8 3.5C18.6 3.5 21 5.6 21 8.8C21 15 12 20.5 12 20.5Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+                      <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; color: #8A8A8A;"><svg width="12" height="12" viewBox="0 0 32 32" fill="none"><path d="M2 16C6 8 12 5 16 5C20 5 26 8 30 16C26 23.5 20 27 16 27C12 27 6 23.5 2 16Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="16" cy="16" r="4.5" stroke="#8A8A8A" stroke-width="1.5"></circle></svg>{{ currentPost.views }}</span>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M3 11L20.5 3L14.5 20.5L11 12.5L3 11Z" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M11 12.5L20.5 3" stroke="#8A8A8A" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                    </div>
+                  </div>
+                  <div style="background: #262626; border-radius: 14px; padding: 16px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 4px;">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M2 9V15L9 16.5V17.5C9 18.3 9.7 19 10.5 19C11.3 19 12 18.3 12 17.5V16.8L21 19V5L12 7.2V7.5L2 9Z" stroke="#F0EEEA" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"></path></svg>
+                      <span style="font-size: 13px; font-weight: 700; color: #F0EEEA;">Rant Context</span>
+                    </div>
+                    <p style="margin: 0 0 10px; font-size: 10.5px; color: #7A756D;">How this rant is targeted and shared</p>
+                    <div style="display: flex; justify-content: space-between; background: #1E1E1E; border-radius: 8px; padding: 9px 12px; margin-bottom: 7px;"><span style="font-size: 11px; color: #B9B4AC;">Topic</span><span style="font-size: 11px; font-weight: 600; color: #F0EEEA;">Just Ranting</span></div>
+                    <div style="display: flex; justify-content: space-between; background: #1E1E1E; border-radius: 8px; padding: 9px 12px; margin-bottom: 7px;"><span style="font-size: 11px; color: #B9B4AC;">Audience</span><span style="font-size: 11px; font-weight: 600; color: #F0EEEA;">Anyone Nearby</span></div>
+                    <div style="display: flex; justify-content: space-between; background: #1E1E1E; border-radius: 8px; padding: 9px 12px; margin-bottom: 7px;"><span style="font-size: 11px; color: #B9B4AC;">Gender Preference</span><span style="font-size: 11px; font-weight: 600; color: #F0EEEA;">Any Gender</span></div>
+                    <div style="display: flex; justify-content: space-between; background: #1E1E1E; border-radius: 8px; padding: 9px 12px;"><span style="font-size: 11px; color: #B9B4AC;">Anonymous</span><span style="font-size: 11px; font-weight: 600; color: #34D399;">Enabled</span></div>
+                  </div>
+                </div>
+                <div style="padding: 12px 16px 16px; flex-shrink: 0;">
+                  <button onClick="{{ demoOpenChat }}" style="width: 100%; height: 44px; border-radius: 12px; background: #FF3B1F; color: #fff; font-size: 13.5px; font-weight: 700; border: none; cursor: pointer;">Join Chat</button>
+                </div>
+              </div>
+            </sc-if>
+
+            <!-- DEMO STEP 2: CHAT -->
+            <sc-if value="{{ demoStep2 }}" hint-placeholder-val="{{ false }}">
+              <div style="height: 100%; display: flex; flex-direction: column; background: #0A0A0A; position: relative; {{ chatBlurStyle }}">
+                <sc-if value="{{ chatBlurred }}" hint-placeholder-val="{{ false }}">
+                  <div style="position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; background: rgba(10,10,10,0.35);">
+                    <button onClick="{{ goToNextPage }}" style="height: 52px; padding: 0 28px; border-radius: 14px; background: #0D6B63; color: #F0EEEA; font-size: 16px; font-weight: 700; border: none; cursor: pointer; transition: transform 150ms ease, background 150ms ease; display: flex; align-items: center; gap: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.5);" style-hover="transform: scale(1.04); background: #09544D;" style-active="transform: scale(0.97);">
+                      <span>Join Chat</span>
+                      <svg width="16" height="12" viewBox="0 0 20 14" fill="none"><path d="M1 7.3C6 6.6 13 7.6 18.5 7" stroke="#F0EEEA" stroke-width="1.5" stroke-linecap="round"></path><path d="M13 2C15.5 4 18.5 6.3 18.5 7C18.5 7.7 15.3 10 12.7 12" stroke="#F0EEEA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                    </button>
+                  </div>
+                </sc-if>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #232323; flex-shrink: 0;">
+                  <span onClick="{{ demoBack }}" style="cursor: pointer; display: flex;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M15 4L7 12L15 20" stroke="#F0EEEA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                  <div style="width: 26px; height: 26px; border-radius: 13px; background: {{ currentPost.chatAvatarBg }}; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{{ currentPost.chatAvatarText }}</div>
+                  <div>
+                    <div style="font-size: 13px; font-weight: 600; color: #F0EEEA;">{{ currentPost.chatTitle }}</div>
+                    <div style="font-size: 10px; color: #7A756D;">Tap for detail</div>
+                  </div>
+                </div>
+                <div style="flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 14px 16px; display: flex; flex-direction: column; gap: 11px;">
+                  <sc-if value="{{ chatIsA }}" hint-placeholder-val="{{ false }}">
+                  <div style="text-align: center; font-size: 10px; color: #6E6860; margin-bottom: 2px;">Yesterday</div>
+                  <div>
+                    <div style="font-size: 11px; font-weight: 600; color: #57C785; margin-bottom: 2px;">anonymous 60c0</div>
+                    <div style="display: inline-block; background: #1E1E1E; color: #E5E1D8; font-size: 12px; padding: 9px 13px; border-radius: 10px; max-width: 82%;">Anyone??</div>
+                    <div style="font-size: 9px; color: #5A564F; margin-top: 3px;">12:45 PM</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 11px; font-weight: 600; color: #E8C24A; margin-bottom: 2px;">anonymous ce90</div>
+                    <div style="display: inline-block; background: #1E1E1E; color: #E5E1D8; font-size: 12px; padding: 9px 13px; border-radius: 10px; max-width: 82%;">Yesss</div>
+                    <div style="font-size: 9px; color: #5A564F; margin-top: 3px;">1:07 PM</div>
+                  </div>
+                  <div style="align-self: flex-end; max-width: 82%; text-align: right;">
+                    <div style="display: inline-block; background: #2B2B2B; color: #E5E1D8; font-size: 12px; padding: 9px 13px; border-radius: 10px; text-align: left;">It's totally worth it</div>
+                    <div style="font-size: 9px; color: #5A564F; margin-top: 3px;">1:08 PM</div>
+                  </div>
+                  <div style="align-self: flex-end; max-width: 82%; text-align: right;">
+                    <div style="display: inline-block; background: #2B2B2B; color: #E5E1D8; font-size: 12px; padding: 9px 13px; border-radius: 10px; text-align: left;">Don't even have second thoughts</div>
+                    <div style="font-size: 9px; color: #5A564F; margin-top: 3px;">1:08 PM</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 11px; font-weight: 600; color: #57C785; margin-bottom: 2px;">anonymous 60c0</div>
+                    <div style="display: inline-block; background: #1E1E1E; color: #E5E1D8; font-size: 12px; padding: 9px 13px; border-radius: 10px; max-width: 88%; line-height: 1.4;">Can you tell me abt the rules of this college? And why does everyone say that its very strict?</div>
+                    <div style="font-size: 9px; color: #5A564F; margin-top: 3px;"><i>edited</i> · 1:30 PM</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 11px; font-weight: 600; color: #B18AE0; margin-bottom: 2px;">anonymous d214</div>
+                    <div style="background: #1E1E1E; border-radius: 10px; padding: 9px 13px; max-width: 88%;">
+                      <div style="border-left: 2px solid #FF3B1F; padding-left: 8px; margin-bottom: 6px;">
+                        <div style="font-size: 9.5px; font-weight: 600; color: #FF3B1F; margin-bottom: 1px;">Anonymous 60c0</div>
+                        <div style="font-size: 10px; color: #8A8A8A;">Can you tell me abt the rules of this college? And why does everyone say that its very strict?</div>
+                      </div>
+                      <div style="font-size: 12px; color: #E5E1D8;">idk, there r some weird rules about attendence and stuff, but im prob gonna fail anyway so...</div>
+                    </div>
+                    <div style="font-size: 9px; color: #5A564F; margin-top: 3px;">3:46 PM</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 11px; font-weight: 600; color: #57C785; margin-bottom: 2px;">anonymous 60c0</div>
+                    <div style="display: inline-block; background: #1E1E1E; color: #E5E1D8; font-size: 12px; padding: 9px 13px; border-radius: 10px; max-width: 90%; line-height: 1.4;">I heard there is a morning assembly apparently&#128557;<br />And the attendance is super strict and its more like a "school" so idk...what do i do man should i put it or not on my preference list!!</div>
+                    <div style="font-size: 9px; color: #5A564F; margin-top: 3px;">5:09 PM</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 11px; font-weight: 600; color: #E0788A; margin-bottom: 2px;">anonymous b2a3</div>
+                    <div style="display: inline-block; background: #1E1E1E; color: #E5E1D8; font-size: 12px; padding: 9px 13px; border-radius: 10px; max-width: 90%; line-height: 1.4;">idk about the morning assembly&#129300;, but i do know that the strict attendance rules are no joke&#128148;</div>
+                    <div style="font-size: 9px; color: #5A564F; margin-top: 3px;">6:49 PM</div>
+                  </div>
+                  </sc-if>
+                  <sc-if value="{{ chatIsB }}" hint-placeholder-val="{{ false }}">
+                  <div style="text-align: center; font-size: 10px; color: #6E6860; margin-bottom: 2px;">Today</div>
+                  <div>
+                    <div style="font-size: 11px; font-weight: 600; color: #E8C24A; margin-bottom: 2px;">sammyisbraindead <span style="font-weight: 400; color: #7A756D;">replying to aisha.khan22</span></div>
+                    <div style="display: inline-block; background: #1E1E1E; color: #E5E1D8; font-size: 12px; padding: 9px 13px; border-radius: 10px; max-width: 88%; line-height: 1.4;">tbh, it's not just about meeting the criteria, people have to fill out so much paperwork too 📝👀</div>
+                    <div style="font-size: 9px; color: #5A564F; margin-top: 3px;">9:52 AM</div>
+                  </div>
+                  <div style="align-self: flex-end; max-width: 82%; text-align: right;">
+                    <div style="display: inline-block; background: #2B2B2B; color: #E5E1D8; font-size: 12px; padding: 9px 13px; border-radius: 10px; text-align: left;">exactly</div>
+                    <div style="font-size: 9px; color: #5A564F; margin-top: 3px;">9:53 AM</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 11px; font-weight: 600; color: #57C785; margin-bottom: 2px;">nehachauhan</div>
+                    <div style="display: inline-block; background: #1E1E1E; color: #E5E1D8; font-size: 12px; padding: 9px 13px; border-radius: 10px; max-width: 88%; line-height: 1.4;">i think that's true, the paperwork can be overwhelming, i've seen people stressing about it 🤯</div>
+                    <div style="font-size: 9px; color: #5A564F; margin-top: 3px;">10:00 AM</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 11px; font-weight: 600; color: #E8C24A; margin-bottom: 2px;">sammyisbraindead</div>
+                    <div style="display: inline-block; background: #1E1E1E; color: #E5E1D8; font-size: 12px; padding: 9px 13px; border-radius: 10px; max-width: 90%; line-height: 1.4;">it's genuinely frustrating getting things signed again and again, slightest mistake and you gotta redo it.. as for me, i applied in so many colleges i had to get multiple cw certificates because each clg has a different format and i fear they'd reject it if we upload one particular certificate for each of them, without following their format..</div>
+                    <div style="font-size: 9px; color: #5A564F; margin-top: 3px;"><i>edited</i> · 10:09 AM</div>
+                  </div>
+                  <div style="align-self: flex-end; max-width: 90%; text-align: right;">
+                    <div style="display: inline-block; background: #2B2B2B; color: #E5E1D8; font-size: 12px; padding: 9px 13px; border-radius: 10px; text-align: left; line-height: 1.4;">can i ask y'all one more thing, i got decent marks in 12th if i calculate my best 5 subjects, i got pretty low grades in accountancy and i was also thinking to appear in the improvement exam but unfortunately i was transferred, my father also disagreed that 12th marks are unnecessary, but I don't want to risk anything.. i hope they aren't necessarily judged anywhere ?</div>
+                    <div style="font-size: 9px; color: #5A564F; margin-top: 3px;">10:11 AM</div>
+                  </div>
+                  </sc-if>
+                </div>
+                <div style="padding: 12px 16px 16px; border-top: 1px solid #232323; flex-shrink: 0;">
+                  <button onClick="{{ goToNextPage }}" style="width: 100%; height: 48px; border-radius: 14px; background: #FF3B1F; color: #fff; font-size: 14px; font-weight: 700; border: none; cursor: pointer; transition: transform 150ms ease, background 150ms ease; display: flex; align-items: center; justify-content: center; gap: 6px;" style-hover="transform: scale(1.02); background: #E62E14;" style-active="transform: scale(0.97);">
+                    <span>Join gossip</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 5L17 12L9 19" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  </button>
+                </div>
+              </div>
+            </sc-if>
+
+          </div>
+        </div>
+        <sc-if value="{{ showDemoCta }}" hint-placeholder-val="{{ true }}">
+          <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 32px 20px 24px; box-sizing: border-box; background: linear-gradient(to top, rgba(10,10,10,0.95) 50%, rgba(10,10,10,0));">
+            <div style="display: flex; gap: 7px; justify-content: center; margin-bottom: 14px;">
+              <div style="width: 7px; height: 7px; border-radius: 4px; background: {{ dotIntroColor }};"></div>
+              <div style="width: 7px; height: 7px; border-radius: 4px; background: {{ dot0Color }};"></div>
+              <div style="width: 7px; height: 7px; border-radius: 4px; background: {{ dot1Color }};"></div>
+              <div style="width: 7px; height: 7px; border-radius: 4px; background: {{ dot2Color }};"></div>
+            </div>
+            <button onClick="{{ handleTakeInside }}" style="width: 100%; height: 56px; border-radius: 14px; background: #0D6B63; color: #F0EEEA; font-size: 16px; font-weight: 600; border: none; cursor: pointer; transition: transform 150ms ease, background 150ms ease; display: flex; align-items: center; justify-content: center; gap: 8px;" style-hover="transform: scale(1.02); background: #09544D;" style-active="transform: scale(0.97);">
+              <span>Take me inside</span>
+              <svg width="16" height="12" viewBox="0 0 20 14" fill="none"><path d="M1 7.3C6 6.6 13 7.6 18.5 7" stroke="#F0EEEA" stroke-width="1.5" stroke-linecap="round"></path><path d="M13 2C15.5 4 18.5 6.3 18.5 7C18.5 7.7 15.3 10 12.7 12" stroke="#F0EEEA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </button>
+          </div>
+        </sc-if>
+      </div>
+
+      <!-- PAGE 2 - Campus Prediction -->
+      <div ref="{{ s3Ref }}" data-screen-label="02 — Campus" style="position: absolute; inset: 0; display: flex; flex-direction: column; opacity: {{ page1opacity }}; pointer-events: {{ page1pointer }}; z-index: {{ page1zindex }}; transition: opacity 350ms ease; overflow-y: auto; background: #F5F3EE; padding: 74px 24px 28px; box-sizing: border-box;">
+        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 32px; animation: ppReveal 500ms ease-out both;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 18px;">
+            <div style="width: 60px; height: 60px; border-radius: 20px; background: #E7F0EE; display: flex; align-items: center; justify-content: center; animation: ppFloat 3s ease-in-out infinite;">
+              <svg width="28" height="32" viewBox="0 0 26 30" fill="none">
+                <path d="M13 2C6.5 2 2 7 2 12.5C2 19.5 11 25.5 12.7 27.8C12.9 28.1 13.2 28.1 13.4 27.8C15.1 25.5 24 19.5 24 12.5C24 7 19.4 2 13 2Z" stroke="#0D6B63" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                <circle cx="13" cy="12.5" r="3.6" stroke="#0D6B63" stroke-width="1.8"></circle>
+              </svg>
+            </div>
+            <div style="text-align: center;">
+              <p style="margin: 0 0 6px; font-size: 13px; font-weight: 600; color: #0D6B63; text-transform: uppercase; letter-spacing: 0.08em;">Step 2 of 4</p>
+              <h1 style="margin: 0; font-size: 26px; font-weight: 800; line-height: 1.2; letter-spacing: -0.02em; color: #1A1A1A;">Where do you think you'll be this semester?</h1>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div onClick="{{ selectNorth }}" style="display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-radius: 14px; cursor: pointer; background: {{ northBg }}; border: {{ northBorder }}; transition: transform 120ms ease, box-shadow 120ms ease;" style-hover="transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.06);" style-active="transform: translateY(0);">
+              <span style="font-size: 15px; font-weight: 600; color: #1A1A1A;">North Campus</span>
+              <sc-if value="{{ northSelected }}" hint-placeholder-val="{{ false }}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 13L9.5 18.5L20.5 6" stroke="#0D6B63" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </sc-if>
+            </div>
+            <div onClick="{{ selectSouth }}" style="display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-radius: 14px; cursor: pointer; background: {{ southBg }}; border: {{ southBorder }}; transition: transform 120ms ease, box-shadow 120ms ease;" style-hover="transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.06);" style-active="transform: translateY(0);">
+              <span style="font-size: 15px; font-weight: 600; color: #1A1A1A;">South Campus</span>
+              <sc-if value="{{ southSelected }}" hint-placeholder-val="{{ false }}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 13L9.5 18.5L20.5 6" stroke="#0D6B63" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </sc-if>
+            </div>
+            <div onClick="{{ selectOff }}" style="display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-radius: 14px; cursor: pointer; background: {{ offBg }}; border: {{ offBorder }}; transition: transform 120ms ease, box-shadow 120ms ease;" style-hover="transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.06);" style-active="transform: translateY(0);">
+              <span style="font-size: 15px; font-weight: 600; color: #1A1A1A;">Off Campus</span>
+              <sc-if value="{{ offSelected }}" hint-placeholder-val="{{ false }}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 13L9.5 18.5L20.5 6" stroke="#0D6B63" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </sc-if>
+            </div>
+            <div onClick="{{ selectUnsure }}" style="display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-radius: 14px; cursor: pointer; background: {{ unsureBg }}; border: {{ unsureBorder }}; transition: transform 120ms ease, box-shadow 120ms ease;" style-hover="transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.06);" style-active="transform: translateY(0);">
+              <span style="font-size: 15px; font-weight: 600; color: #1A1A1A;">Still figuring it out</span>
+              <sc-if value="{{ unsureSelected }}" hint-placeholder-val="{{ false }}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 13L9.5 18.5L20.5 6" stroke="#0D6B63" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </sc-if>
+            </div>
+            <div onClick="{{ selectBetween }}" style="display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-radius: 14px; cursor: pointer; background: {{ betweenBg }}; border: {{ betweenBorder }}; transition: transform 120ms ease, box-shadow 120ms ease;" style-hover="transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.06);" style-active="transform: translateY(0);">
+              <span style="font-size: 15px; font-weight: 600; color: #1A1A1A;">Something between South &amp; North</span>
+              <sc-if value="{{ betweenSelected }}" hint-placeholder-val="{{ false }}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 13L9.5 18.5L20.5 6" stroke="#0D6B63" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+
+        <button onClick="{{ goTo4 }}" style="width: 100%; height: 56px; border-radius: 14px; background: #0D6B63; color: #F0EEEA; font-size: 16px; font-weight: 600; border: none; transition: transform 150ms ease, background 150ms ease, opacity 150ms ease; opacity: {{ continue3Opacity }}; cursor: {{ continue3Cursor }}; display: flex; align-items: center; justify-content: center; gap: 8px;" style-hover="transform: scale(1.02); background: #09544D;" style-active="transform: scale(0.97);">
+          <span>Continue</span>
+          <svg width="16" height="12" viewBox="0 0 20 14" fill="none"><path d="M1 7.3C6 6.6 13 7.6 18.5 7" stroke="#F0EEEA" stroke-width="1.5" stroke-linecap="round"></path><path d="M13 2C15.5 4 18.5 6.3 18.5 7C18.5 7.7 15.3 10 12.7 12" stroke="#F0EEEA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </button>
+      </div>
+
+      <!-- PAGE 3 - WhatsApp -->
+      <div ref="{{ s4Ref }}" data-screen-label="03 — WhatsApp" style="position: absolute; inset: 0; display: flex; flex-direction: column; opacity: {{ page2opacity }}; pointer-events: {{ page2pointer }}; z-index: {{ page2zindex }}; transition: opacity 350ms ease; overflow-y: auto; background: #F5F3EE; padding: 74px 24px 28px; box-sizing: border-box;">
+        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 32px; animation: ppReveal 500ms ease-out both;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 18px;">
+            <div style="width: 60px; height: 60px; border-radius: 20px; background: #E7F0EE; display: flex; align-items: center; justify-content: center; animation: ppFloat 3s ease-in-out infinite;">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                <path d="M3 11L20.5 3L14.5 20.5L11 12.5L3 11Z" stroke="#0D6B63" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                <path d="M11 12.5L20.5 3" stroke="#0D6B63" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+            <div style="text-align: center;">
+              <p style="margin: 0 0 6px; font-size: 13px; font-weight: 600; color: #0D6B63; text-transform: uppercase; letter-spacing: 0.08em;">Step 3 of 4</p>
+              <h1 style="margin: 0; font-size: 26px; font-weight: 800; line-height: 1.2; letter-spacing: -0.02em; color: #1A1A1A;">Almost there.</h1>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <p style="margin: 0; text-align: center; font-size: 17px; font-weight: 600; color: #1A1A1A;">Drop your WhatsApp.</p>
+            <p style="margin: 0 auto; max-width: 300px; text-align: center; font-size: 14.5px; line-height: 1.65; color: #6E6860;">We won't spam you. We'll drop you straight into your campus zone, and if things ever get bumpy, we'll be your rescue crew.</p>
+            <div style="position: relative; width: 100%;">
+              <span style="position: absolute; left: 18px; top: 50%; transform: translateY(-50%); font-size: 16px; font-weight: 700; color: #1A1A1A; pointer-events: none;">+91</span>
+              <input type="tel" inputMode="numeric" maxLength="10" placeholder="10-digit number" value="{{ phone }}" onChange="{{ onPhoneChange }}" style="width: 100%; height: 60px; border-radius: 14px; border: 1px solid #DDD8D0; background: #FFFFFF; padding: 0 18px 0 60px; font-size: 17px; font-weight: 500; color: #1A1A1A; outline: none; box-sizing: border-box; transition: border-color 150ms ease, box-shadow 150ms ease;" style-focus="border-color: #0D6B63; box-shadow: 0 0 0 3px rgba(13,107,99,0.12);" />
+            </div>
+          </div>
+        </div>
+
+        <button onClick="{{ goTo5 }}" style="width: 100%; height: 56px; border-radius: 14px; background: #0D6B63; color: #F0EEEA; font-size: 16px; font-weight: 600; border: none; transition: transform 150ms ease, background 150ms ease, opacity 150ms ease; opacity: {{ joinOpacity }}; cursor: {{ joinCursor }}; display: flex; align-items: center; justify-content: center; gap: 8px;" style-hover="transform: scale(1.02); background: #09544D;" style-active="transform: scale(0.97);">
+          <span>Take me inside</span>
+          <svg width="16" height="12" viewBox="0 0 20 14" fill="none"><path d="M1 7.3C6 6.6 13 7.6 18.5 7" stroke="#F0EEEA" stroke-width="1.5" stroke-linecap="round"></path><path d="M13 2C15.5 4 18.5 6.3 18.5 7C18.5 7.7 15.3 10 12.7 12" stroke="#F0EEEA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </button>
+      </div>
+
+      <!-- PAGE 4 - Download Picapool -->
+      <div ref="{{ s5Ref }}" data-screen-label="04 — Download" style="position: absolute; inset: 0; display: flex; flex-direction: column; opacity: {{ page3opacity }}; pointer-events: {{ page3pointer }}; z-index: {{ page3zindex }}; transition: opacity 350ms ease; overflow-y: auto; background: #F5F3EE; padding: 74px 24px 28px; box-sizing: border-box;">
+        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 40px; animation: ppReveal 500ms ease-out both;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 18px;">
+            <div style="width: 70px; height: 70px; border-radius: 24px; background: #E7F0EE; display: flex; align-items: center; justify-content: center; animation: ppFloat 3s ease-in-out infinite;">
+              <svg width="32" height="32" viewBox="0 0 30 30" fill="none">
+                <circle cx="15" cy="15" r="13" stroke="#0D6B63" stroke-width="1.8"></circle>
+                <path d="M9.5 15.3L13 19L20.5 10.5" stroke="#0D6B63" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+            <div style="text-align: center;">
+              <p style="margin: 0 0 6px; font-size: 13px; font-weight: 600; color: #0D6B63; text-transform: uppercase; letter-spacing: 0.08em;">Step 4 of 4</p>
+              <h1 style="margin: 0; font-size: 26px; font-weight: 800; line-height: 1.2; letter-spacing: -0.02em; color: #1A1A1A;">Your future campus has been talking for a while.</h1>
+            </div>
+          </div>
+
+          <div style="text-align: center;">
+            <p style="margin: 0; font-size: 17px; line-height: 1.6; color: #6E6860;">Time to see what you've been missing.</p>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
+            <button onClick="{{ downloadApp }}" style="width: 100%; height: 56px; border-radius: 14px; background: #0D6B63; color: #F0EEEA; font-size: 16px; font-weight: 600; border: none; cursor: pointer; transition: transform 150ms ease, background 150ms ease; display: flex; align-items: center; justify-content: center; gap: 8px;" style-hover="transform: scale(1.02); background: #09544D;" style-active="transform: scale(0.97);">
+              <span>Download Picapool</span>
+              <svg width="16" height="12" viewBox="0 0 20 14" fill="none"><path d="M1 7.3C6 6.6 13 7.6 18.5 7" stroke="#F0EEEA" stroke-width="1.5" stroke-linecap="round"></path><path d="M13 2C15.5 4 18.5 6.3 18.5 7C18.5 7.7 15.3 10 12.7 12" stroke="#F0EEEA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;requireCampusSelection&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Screen 3 — Campus Prediction&quot; },
+  &quot;whatsappMessage&quot;: { &quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;Hey Picapool, take me to my campus group!&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Screen 5 — Download&quot; },
+  &quot;appDownloadUrl&quot;: { &quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Screen 5 — Download&quot; }
+}">
+class Component extends DCLogic {
+  state = {
+    phone: '',
+    campus: null,
+    demoStep: 0,
+    introPhase: 0,
+    introTooltips: false,
+    showMorePosts: false,
+    currentPage: 0,
+    direction: 1,
+    chatBlurred: false,
+    activePost: 0,
+  };
+
+  posts = [
+    {
+      title: 'st stephens strictness',
+      body: 'is st stephens strict college? if yes then can someone elaborate on the rules and procedures of the college and if uts worth keeping in my preference list. btw i got 860/1000 eco hons general',
+      tag: 'Ranting',
+      tagBg: '#E08A2B',
+      tagColor: '#1A1A1A',
+      author: 'Anonymous',
+      avatarBg: '#3B82C4',
+      avatarText: 'A',
+      views: 154,
+      likes: 102,
+      time: '2d ago',
+      distance: '~1.3 km',
+      chatTitle: 'st stephens strictness',
+      chatAvatarBg: '#34B37B',
+      chatAvatarText: 'S',
+    },
+    {
+      title: '557/1000 in cuet, bcom, defe...',
+      body: "tbh, it's not just about meeting the criteria, people have to fill out so much paperwork too 📝👀",
+      tag: 'Asking Nearby',
+      tagBg: '#2B6FE0',
+      tagColor: '#fff',
+      author: 'green avatar',
+      avatarBg: '#4CAF50',
+      avatarText: 'G',
+      views: 2345,
+      likes: 69,
+      time: '4d ago',
+      distance: '~1.8 km',
+      chatTitle: '557/1000 in cuet...',
+      chatAvatarBg: '#4CAF50',
+      chatAvatarText: 'B',
+    },
+  ];
+
+  componentDidMount() {
+    this.introTimers = [
+      setTimeout(() => this.setState({ introPhase: 1 }), 1400),
+      setTimeout(() => this.setState({ introTooltips: true }), 2400),
+      setTimeout(() => this.setState({ introPhase: 2 }), 3800),
+      setTimeout(() => { if (this.state.demoStep === 0) this.setState({ demoStep: 1 }); }, 5600),
+    ];
+  }
+
+  componentWillUnmount() {
+    (this.introTimers || []).forEach(clearTimeout);
+    if (this.blurTimer) clearTimeout(this.blurTimer);
+  }
+
+  skipIntro = () => {
+    (this.introTimers || []).forEach(clearTimeout);
+    this.setState({ demoStep: 1 });
+  };
+
+  containerRef = React.createRef();
+  stageRef = React.createRef();
+  s1Ref = React.createRef();
+  s3Ref = React.createRef();
+  s4Ref = React.createRef();
+  s5Ref = React.createRef();
+
+  scrollToRef = (ref) => {
+    const container = this.containerRef.current;
+    const target = ref.current;
+    if (container && target) {
+      container.scrollTo({ top: target.offsetTop, behavior: 'smooth' });
+    }
+  };
+
+  goToPage = (page, direction = 1) => {
+    if (window.track) window.track('page_change', 'page_' + (page + 1), '');
+    this.setState({ currentPage: page, direction });
+  };
+
+  nextPage = () => {
+    const next = Math.min(3, this.state.currentPage + 1);
+    this.goToPage(next, 1);
+  };
+
+  prevPage = () => {
+    const prev = Math.max(0, this.state.currentPage - 1);
+    this.goToPage(prev, -1);
+  };
+
+  handleTakeInside = () => {
+    if (window.track) window.track('cta', 'take_me_inside', 'demo_step_' + this.state.demoStep);
+    (this.introTimers || []).forEach(clearTimeout);
+    if (this.blurTimer) clearTimeout(this.blurTimer);
+    this.setState({ demoStep: 3, chatBlurred: true });
+    this.blurTimer = setTimeout(() => {
+      this.setState({ chatBlurred: false });
+      this.goToPage(1, 1);
+    }, 1400);
+  };
+
+  goToNextPage = () => {
+    if (window.track) window.track('cta', 'join_chat_overlay', 'post_' + this.state.activePost);
+    if (this.blurTimer) clearTimeout(this.blurTimer);
+    this.setState({ chatBlurred: false });
+    this.goToPage(1, 1);
+  };
+
+  handleJoin = () => {
+    if (this.state.phone.length !== 10) return;
+    if (window.track) window.track('form', 'phone_submit', '+91' + this.state.phone);
+    this.goToPage(3, 1);
+  };
+
+  handleContinueFromCampus = () => {
+    if ((this.props.requireCampusSelection ?? false) && !this.state.campus) return;
+    if (window.track) window.track('form', 'campus_continue', this.state.campus || 'no_selection');
+    this.goToPage(2, 1);
+  };
+
+  openWhatsapp = () => {
+    if (window.track) window.track('cta', 'whatsapp', '');
+    const message = this.props.whatsappMessage ?? "Hey Picapool, take me to my campus group!";
+    window.open('https://wa.me/?text=' + encodeURIComponent(message), '_blank');
+  };
+
+  downloadApp = () => {
+    if (window.track) window.track('cta', 'download_app', this.props.appDownloadUrl || '');
+    const url = this.props.appDownloadUrl ?? '';
+    if (url) window.open(url, '_blank');
+  };
+
+  setPhone = (e) => {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+    if (window.track && digits.length === 10) window.track('form', 'phone_complete', '+91' + digits);
+    this.setState({ phone: digits });
+  };
+
+  selectCampus = (value) => {
+    if (window.track) window.track('form', 'campus_select', value);
+    this.setState({ campus: value });
+  };
+
+  revealMorePosts = () => this.setState({ showMorePosts: true });
+
+  openDetail = (index) => {
+    if (window.track) window.track('post', 'open_detail', 'post_' + index);
+    this.setState({ activePost: index, demoStep: 2 });
+  };
+  demoOpenChat = () => {
+    if (window.track) window.track('post', 'join_chat', 'post_' + this.state.activePost);
+    this.setState({ demoStep: 3 });
+  };
+  demoBack = () => this.setState((s) => ({ demoStep: Math.max(0, s.demoStep - 1) }));
+
+  renderVals() {
+    const { phone, campus, demoStep, introPhase, introTooltips, showMorePosts, currentPage, direction, chatBlurred, activePost } = this.state;
+    const dotColor = (step) => (demoStep === step ? '#F0EEEA' : 'rgba(240,238,234,0.25)');
+    const canSubmit = phone.length === 10;
+    const requireCampus = this.props.requireCampusSelection ?? false;
+    const canContinue3 = !requireCampus || !!campus;
+
+    const optionStyle = (key) => {
+      const active = campus === key;
+      return {
+        selected: active,
+        bg: active ? '#E7F0EE' : '#FFFFFF',
+        border: active ? '2px solid #0D6B63' : '1px solid #DDD8D0',
+      };
+    };
+    const north = optionStyle('north');
+    const south = optionStyle('south');
+    const off = optionStyle('off');
+    const unsure = optionStyle('unsure');
+    const between = optionStyle('between');
+
+    const isPage = (idx) => currentPage === idx;
+    const opacity = (idx) => isPage(idx) ? '1' : '0';
+    const pointer = (idx) => isPage(idx) ? 'auto' : 'none';
+    const zindex = (idx) => isPage(idx) ? '10' : '0';
+
+    const currentPost = this.posts[activePost];
+
+    return {
+      containerRef: this.containerRef,
+      stageRef: this.stageRef,
+      s1Ref: this.s1Ref,
+      s3Ref: this.s3Ref,
+      s4Ref: this.s4Ref,
+      s5Ref: this.s5Ref,
+      handleTakeInside: this.handleTakeInside,
+      goToNextPage: this.goToNextPage,
+      goTo4: this.handleContinueFromCampus,
+      goTo5: this.handleJoin,
+      nextPage: this.nextPage,
+      prevPage: this.prevPage,
+
+      progressPercent: String(((currentPage + 1) / 4) * 100),
+      pageLabel: currentPage === 0 ? '' : `0${currentPage + 1}/04`,
+      showBackButton: currentPage > 0,
+      showProgressBar: currentPage > 0,
+
+      page0opacity: opacity(0),
+      page0pointer: pointer(0),
+      page0zindex: zindex(0),
+      page1opacity: opacity(1),
+      page1pointer: pointer(1),
+      page1zindex: zindex(1),
+      page2opacity: opacity(2),
+      page2pointer: pointer(2),
+      page2zindex: zindex(2),
+      page3opacity: opacity(3),
+      page3pointer: pointer(3),
+      page3zindex: zindex(3),
+
+      phone,
+      onPhoneChange: this.setPhone,
+      joinOpacity: canSubmit ? 1 : 0.5,
+      joinCursor: canSubmit ? 'pointer' : 'not-allowed',
+
+      selectNorth: () => this.selectCampus('north'),
+      selectSouth: () => this.selectCampus('south'),
+      selectOff: () => this.selectCampus('off'),
+      selectUnsure: () => this.selectCampus('unsure'),
+      selectBetween: () => this.selectCampus('between'),
+      northSelected: north.selected, northBg: north.bg, northBorder: north.border,
+      southSelected: south.selected, southBg: south.bg, southBorder: south.border,
+      offSelected: off.selected, offBg: off.bg, offBorder: off.border,
+      unsureSelected: unsure.selected, unsureBg: unsure.bg, unsureBorder: unsure.border,
+      betweenSelected: between.selected, betweenBg: between.bg, betweenBorder: between.border,
+      continue3Opacity: canContinue3 ? 1 : 0.5,
+      continue3Cursor: canContinue3 ? 'pointer' : 'not-allowed',
+
+      openWhatsapp: this.openWhatsapp,
+      downloadApp: this.downloadApp,
+
+      activePost,
+      currentPost,
+      posts: this.posts,
+      chatIsA: activePost === 0,
+      chatIsB: activePost === 1,
+      openPostA: () => this.openDetail(0),
+      openPostB: () => this.openDetail(1),
+      demoOpenChat: this.demoOpenChat,
+      demoBack: this.demoBack,
+      skipIntro: this.skipIntro,
+      dotIntroColor: dotColor(0),
+      dot0Color: dotColor(1),
+      dot1Color: dotColor(2),
+      dot2Color: dotColor(3),
+
+      demoStep0: demoStep === 1,
+      demoStep1: demoStep === 2,
+      demoStep2: demoStep === 3,
+      demoStepIntro: demoStep === 0,
+      showDemoCta: demoStep === 0 || demoStep === 1,
+      chatBlurStyle: chatBlurred ? 'animation: ppBlurPulse 1.3s ease-in-out infinite;' : '',
+      introRadarActive: introPhase < 2,
+      introCountActive: introPhase === 2,
+      introShowBubbles: introPhase >= 1,
+      introShowTooltips: introTooltips,
+      introStatusText: introPhase === 0 ? 'Getting your location...' : 'Finding people nearby...',
+
+      showMorePosts,
+      showSeeMoreButton: !showMorePosts,
+      revealMorePosts: this.revealMorePosts,
+      feedOverflow: showMorePosts ? 'auto' : 'hidden',
+    };
+  }
+}
+</script>
+</body>
+</html>
