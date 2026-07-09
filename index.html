@@ -41,13 +41,13 @@
       function flushQueue() {
         while (queue.length) {
           const args = queue.shift();
-          sendNow(args[0], args[1], args[2]);
+          sendNow(args[0], args[1], args[2], args[3]);
         }
       }
 
-      function sendNow(event, target, detail) {
+      function sendNow(event, target, detail, extra) {
         if (!url || url.indexOf('PASTE_') === 0) return;
-        const payload = {
+        const payload = Object.assign({
           ip: userIP,
           page: window.location.href,
           event: String(event || ''),
@@ -55,7 +55,7 @@
           detail: String(detail || ''),
           ua: navigator.userAgent,
           ref: document.referrer
-        };
+        }, extra || {});
         const body = JSON.stringify(payload);
 
         try {
@@ -72,12 +72,12 @@
         } catch (e) {}
       }
 
-      function send(event, target, detail) {
+      function send(event, target, detail, extra) {
         if (!ipReady) {
-          queue.push([event, target, detail]);
+          queue.push([event, target, detail, extra]);
           return;
         }
-        sendNow(event, target, detail);
+        sendNow(event, target, detail, extra);
       }
 
       window.track = send;
@@ -795,7 +795,7 @@ class Component extends DCLogic {
 
   handleJoin = () => {
     if (this.state.phone.length !== 10) return;
-    if (window.track) window.track('form', 'phone_submit', '+91' + this.state.phone);
+    if (window.track) window.track('form', 'phone_submit', '+91' + this.state.phone, { campus: this.state.campus || '' });
     this.goToPage(3, 1);
   };
 
@@ -826,6 +826,7 @@ class Component extends DCLogic {
   selectCampus = (value) => {
     if (window.track) window.track('form', 'campus_select', value);
     this.setState({ campus: value });
+    this.goToPage(2, 1);
   };
 
   revealMorePosts = () => this.setState({ showMorePosts: true });
