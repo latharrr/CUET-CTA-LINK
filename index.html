@@ -60,12 +60,12 @@
 
         try {
           if (navigator.sendBeacon) {
-            navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+            navigator.sendBeacon(url, new Blob([body], { type: 'text/plain' }));
           } else {
             fetch(url, {
               method: 'POST',
               body: body,
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'text/plain' },
               mode: 'no-cors'
             }).catch(function() {});
           }
