@@ -382,7 +382,7 @@
 
             <!-- DEMO STEP 2: CHAT -->
             <sc-if value="{{ demoStep2 }}" hint-placeholder-val="{{ false }}">
-              <div style="height: 100%; display: flex; flex-direction: column; background: #0A0A0A; position: relative; {{ chatBlurStyle }}">
+              <div style="position: absolute; inset: 0; display: flex; flex-direction: column; background: #0A0A0A; {{ chatBlurStyle }}">
                 <sc-if value="{{ chatBlurred }}" hint-placeholder-val="{{ false }}">
                   <div style="position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; background: rgba(10,10,10,0.35);">
                     <button onClick="{{ goToNextPage }}" style="height: 52px; padding: 0 28px; border-radius: 14px; background: #0D6B63; color: #F0EEEA; font-size: 16px; font-weight: 700; border: none; cursor: pointer; transition: transform 150ms ease, background 150ms ease; display: flex; align-items: center; gap: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.5);" style-hover="transform: scale(1.04); background: #09544D;" style-active="transform: scale(0.97);">
@@ -626,7 +626,7 @@
 <script type="text/x-dc" data-dc-script data-props="{
   &quot;requireCampusSelection&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Screen 3 — Campus Prediction&quot; },
   &quot;whatsappMessage&quot;: { &quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;Hey Picapool, take me to my campus group!&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Screen 5 — Download&quot; },
-  &quot;appDownloadUrl&quot;: { &quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Screen 5 — Download&quot; }
+  &quot;appDownloadUrl&quot;: { &quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;https://offer.picapool.com/flats?rid=r_iQBIF_p3oUs7B1DCMKuIWQ&utm_campaign=alternate_website_redirect&utm_content=DM_1&utm_medium=PTANI&utm_source=INSTA&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Screen 5 — Download&quot; }
 }">
 class Component extends DCLogic {
   state = {
@@ -736,7 +736,7 @@ class Component extends DCLogic {
     this.blurTimer = setTimeout(() => {
       this.setState({ chatBlurred: false });
       this.goToPage(1, 1);
-    }, 1400);
+    }, 900);
   };
 
   goToNextPage = () => {
